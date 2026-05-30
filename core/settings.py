@@ -35,6 +35,9 @@ INSTALLED_APPS = [
     "rest_framework.authtoken",
     "corsheaders",
     "core",
+    "profiles",
+    "students",
+    "classes",
 ]
 
 REST_FRAMEWORK = {
@@ -138,9 +141,7 @@ SITE_URL = os.environ.get("SITE_URL", "http://localhost:8000").rstrip("/")
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip("/")
 
 CORS_ALLOWED_ORIGINS = [
-    o.strip()
-    for o in os.environ.get("DJANGO_CORS_ALLOWED_ORIGINS", "").split(",")
-    if o.strip()
+    o.strip() for o in os.environ.get("DJANGO_CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()
 ]
 CSRF_TRUSTED_ORIGINS = list(CORS_ALLOWED_ORIGINS)
 
