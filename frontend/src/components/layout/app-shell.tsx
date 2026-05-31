@@ -1,5 +1,11 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { LogOut } from "lucide-react";
+import {
+  BookOpen,
+  ClipboardList,
+  LayoutDashboard,
+  LogOut,
+  Users,
+} from "lucide-react";
 import { useAtom } from "jotai";
 
 import { userAtom } from "@/features/auth/state";
@@ -7,7 +13,10 @@ import { useLogout } from "@/features/auth/hooks";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { to: "/dashboard", label: "Dashboard" },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/students", label: "Murid", icon: Users },
+  { to: "/classes", label: "Kelas", icon: BookOpen },
+  { to: "/enrollments", label: "Pendaftaran", icon: ClipboardList },
 ];
 
 export function AppShell() {
@@ -19,22 +28,28 @@ export function AppShell() {
     <div className="flex h-screen overflow-hidden">
       <aside className="flex w-60 shrink-0 flex-col justify-between bg-slate-900 text-slate-200">
         <div className="flex flex-col gap-6 px-4 py-6">
-          <div className="text-lg font-semibold tracking-tight text-white">App</div>
+          <div className="text-lg font-semibold tracking-tight text-white">
+            Privatin
+          </div>
           <nav className="flex flex-col gap-1 text-sm">
-            {NAV.map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={cn(
-                  "rounded px-3 py-2 transition",
-                  pathname === item.to
-                    ? "bg-blue-500/15 text-white border-l-2 border-blue-400 -ml-px pl-2.5"
-                    : "text-slate-300 hover:bg-white/5",
-                )}
-              >
-                {item.label}
-              </Link>
-            ))}
+            {NAV.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={cn(
+                    "flex items-center gap-2 rounded px-3 py-2 transition",
+                    pathname === item.to
+                      ? "bg-blue-500/15 text-white border-l-2 border-blue-400 -ml-px pl-2.5"
+                      : "text-slate-300 hover:bg-white/5",
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
         </div>
         <div className="flex flex-col gap-3 border-t border-white/10 px-4 py-4 text-xs">

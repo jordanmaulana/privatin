@@ -36,6 +36,22 @@ These use different auth systems. The Django side is Django sessions + superuser
 
 `POST /api/v1/auth/google/` verifies a Google `credential` (`GoogleAuthSerializer` calls `google.oauth2.id_token`), gets-or-creates a `User` keyed by email, and returns a DRF token. `me/` reports an `onboarded` flag derived from whether the user's `UserProfile.full_name` is set. DRF defaults to `IsAuthenticated` globally (`core/settings.py`), so new API endpoints are auth-required unless decorated `@permission_classes([AllowAny])`.
 
+### React SPA structure (`frontend/src/`) — feature-sliced
+
+The SPA is organized **by domain feature, not by file type**. Mirror this layout when adding a resource:
+
+- `features/<domain>/` (e.g. `students/`, `classes/`, `enrollments/`, `dashboard/`, `profile/`, `auth/`) — each owns:
+  - `api.ts` — thin functions calling the central `api<T>()` wrapper (one per CRUD verb).
+  - `hooks.ts` — TanStack Query hooks wrapping those functions, plus a **query-key factory** (`export const studentKeys = { all: ["students"] }`). Mutations `invalidateQueries` on success; cross-feature effects invalidate the other feature's key too (e.g. deleting a student invalidates `["enrollments"]`).
+  - `types.ts` — the domain types and `*Input` shapes.
+  - `components/` — the feature's UI, including its `*-page.tsx`.
+- `routes/<name>.tsx` — **thin** file-based TanStack Router stubs; each just maps a path to a feature page component via `createFileRoute`. Don't put logic here.
+- `components/ui/` — shadcn/radix primitives (button, dialog, table, select…). `components/common/` — shared app widgets (e.g. `delete-confirm-dialog`). `components.json` configures shadcn.
+- `lib/api.ts` — the single fetch wrapper: prepends `/api/v1`, injects `Authorization: Token <localStorage token>` (skippable via `{ skipAuth: true }`), treats 204 as `undefined`, and flattens DRF error shapes (`{detail}` or field-keyed arrays) into one string via `ApiError`. Route all network calls through it.
+- `lib/format.ts` — `formatRupiah` (uses `id-ID` locale, `Rp` prefix, no decimals). `lib/utils.ts` — the shadcn `cn` helper.
+- `app/query-client.ts` — the shared `QueryClient`.
+- Imports use the `@/` alias for `frontend/src/`, and the codebase style is **named path-imports** (`@/features/students/api`), not barrel/index re-exports.
+
 ### Domain model (`profiles/`, `students/`, `classes/`)
 
 All domain rows are **multi-tenant by `owner`** (FK to `auth.User` = the teacher). Always scope queries by `owner`.
@@ -53,6 +69,15 @@ This file implements the product's reason to exist:
 - `ensure_month_payments(owner, period)` — idempotently bulk-creates a `MonthlyPayment` for every active enrollment for a month. Call before reading payment status for a period.
 - `unpaid_this_month(owner, period)` — unpaid rows (ensures first).
 - `incomplete_schedule_this_month(owner, period)` — active enrollments whose held-session count is below target. Filtered in Python (not SQL) so the `target_sessions` fallback property stays the single source of truth.
+
+### REST API surface (`api/v1/`)
+
+Routing (`api/v1/urls.py`) is a DRF `DefaultRouter` for CRUD plus flat `path(...)` routes for non-CRUD; literal paths are registered to win over router detail lookups.
+
+- **CRUD viewsets** (`viewsets.py`) all extend `OwnerScopedModelViewSet`: `get_queryset()` narrows to `owner=request.user` and `perform_create()` forces `owner=request.user` server-side — clients can't set or cross owners. Subclass this for any new tenant-scoped resource; don't re-implement scoping.
+- Method restrictions are intentional: `SessionLogViewSet` has no PATCH (lessons are created/deleted, not edited); `MonthlyPaymentViewSet` is GET/POST only with custom `mark-paid` / `mark-unpaid` `@action`s, and its `.list()` calls `ensure_month_payments` first so the period's ledger is materialized before reading.
+- **Period parsing**: `_common.parse_period(request)` accepts `?period=`/`?month=` as `YYYY-MM` or `YYYY-MM-DD` and defaults to the current Jakarta month. Reuse it for any period-filtered endpoint instead of parsing dates ad hoc.
+- Dashboard endpoints (`dashboard_api.py`): `GET dashboard/unpaid/` and `dashboard/incomplete/` wrap the `classes/queries.py` functions — the two questions the product exists to answer.
 
 ### Two unrelated "payments"
 

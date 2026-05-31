@@ -31,9 +31,23 @@ export async function api<T>(path: string, init?: ApiInit): Promise<T> {
   const data = text ? JSON.parse(text) : null;
   if (!res.ok) {
     const message =
-      (data && (data.detail || JSON.stringify(data))) ||
-      `${res.status} ${res.statusText}`;
+      extractErrorMessage(data) || `${res.status} ${res.statusText}`;
     throw new ApiError(res.status, message, data);
   }
   return data as T;
+}
+
+// DRF returns errors as { detail: "..." } or, for validation, an object keyed
+// by field name with arrays of messages ({ non_field_errors: ["..."] }).
+// Flatten either shape into a readable single string for toasts.
+function extractErrorMessage(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const obj = data as Record<string, unknown>;
+  if (typeof obj.detail === "string") return obj.detail;
+  const messages: string[] = [];
+  for (const value of Object.values(obj)) {
+    if (Array.isArray(value)) messages.push(...value.map(String));
+    else if (typeof value === "string") messages.push(value);
+  }
+  return messages.length ? messages.join(" ") : null;
 }
