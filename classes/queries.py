@@ -70,6 +70,4 @@ def incomplete_schedule_this_month(owner, period: date):
     )
     # target falls back to the class default when the enrollment has no override;
     # filter in Python so the property logic stays in one place.
-    return [
-        e for e in enrollments if e.held_count < e.target_sessions
-    ]
+    return [e for e in enrollments if e.held_count < e.target_sessions]
